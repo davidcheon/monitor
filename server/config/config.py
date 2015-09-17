@@ -3,8 +3,8 @@ host:127.0.0.1
 password:daisongchen
 
 [clients]
-ip1:192.168.0.132
-ip2:192.168.0.200
+ip1:192.168.1.105
+ip2:192.168.1.200
 
 [channels]
 channel1:channel1
