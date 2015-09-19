@@ -27,14 +27,18 @@ class mythread(threading.Thread):
 		try:
 			self.recv_data['received_time']=time.time()
 			threads=[]
-			t=cpu_handler.cpu_handler_thread(self.recv_data,self.from_ip,self.counter)	
-			threads.append(t)
-			t.start()
-
-
+			t_cpu=cpu_handler.cpu_handler_thread(self.recv_data,self.counter)	
+			t_memory=memory_handler.memory_handler_thread(self.recv_data,self.counter)
+			t_hdm=hdm_handler.hdm_handler_thread(self.recv_data,self.counter)
+			threads.append(t_cpu)
+			threads.append(t_memory)
+			threads.append(t_hdm)
+			t_cpu.start()
+			t_memory.start()
+			t_hdm.start()
 			for t in threads:
 				t.join()
- 			'''
+ 			'''self.recv_data=
 {u'hdm': {u'/dev/shm': u'1%', u'/boot': u'18%', u'/media/\u6211\u7684\u5149\u76d8': u'100%', u'/': u'87%', u'/home': u'53%'}, 'received_time': 1442501366.021204, u'from': u'192.168.1.105', u'cpu': {u'idle': u'93.79', u'nice': u'0.00', u'system': u'2.18', u'user': u'3.27'}, u'memory': {u'mem_free': 23.0}}
 			'''
 
@@ -51,7 +55,11 @@ if __name__=='__main__':
 	signal.signal(signal.SIGINT,handler)
 	signal.signal(signal.SIGTERM,handler)
 	r=red.getredis()
-	if r.ping():
+	try:
+		r.ping()
+	except Exception,e:
+		print e
+	else:
 		ps=r.pubsub()
 		hosts=hs.hosts
 		channels=hs.channels
@@ -65,6 +73,7 @@ if __name__=='__main__':
 				temp_servers[server]=server+'_info'
 			send_data['servers']=temp_servers
 			send_data['interval']=h.interval
+			send_data['cpu_interval']=h.servers['cpu']['cpu_interval']
 			r.set(h.ip,json.dumps(send_data))
 			counter[h.ip]={'cpu':{
 				'idle':[],			
@@ -75,8 +84,8 @@ if __name__=='__main__':
 				},'memory':{
 				'mem_free':[],
 				},'hdm':{
-				'uswage':[]
-				}}
+					}
+				}
 		ps.subscribe(channels)
 		#for item in ps.listen():
 		#	if item['type']=='message':
@@ -84,13 +93,20 @@ if __name__=='__main__':
 		#		t.start()
 		for n in xrange(len(channels)):
 			ps.parse_response()
-		
+		host_hdm_status={}
+		for host in hs.hosts.values():
+			host_hdm_status[str(host.ip)]=False
 		while 1:
-			recv_data=ps.parse_response()	
-			t=mythread(json.loads(recv_data[2]),counter)
+			recv_data=ps.parse_response()[2]
+			recv_data=json.loads(recv_data)
+			from_ip=recv_data['data']['from']
+			if not host_hdm_status[from_ip]:
+				for device in recv_data['data']['hdm'].keys():
+						counter[from_ip]['hdm'][device]=[]
+				
+			host_hdm_status[from_ip]=True
+			t=mythread(recv_data,counter)
 			t.start()
-	else:
-		print 'redis connect failed'
 
 
 

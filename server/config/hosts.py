@@ -9,8 +9,8 @@ config=ConfigParser()
 config_file=os.path.join(os.path.dirname(os.path.dirname(__file__)),'config/config.py')
 config.read(config_file)
 hosts={}
-interval=config.get('interval','value')
 for ip in config.items('clients'):
+	interval=config.get('interval',ip[1])
 	hosts[ip[1]]=host.host(ip[1],interval)
 channels=[]
 for channel in config.items('channels'):

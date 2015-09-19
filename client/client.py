@@ -18,10 +18,11 @@ class client:
 		if self.status:
 			val=self.redis.get(self.local_ip)
 			if  val:
-				val=json.loads(val)
-				self.channel=val['channel']
-				self.interval=int(val['interval'])
-				self.servers=val['servers']
+				self.val=json.loads(val)
+				self.channel=self.val['channel']
+				self.interval=int(self.val['interval'])
+				self.servers=self.val['servers']
+				self.cpu_interval=self.val['cpu_interval']
 				self.can_start_plugins=True
 				self.start_plugins()
 			else:
@@ -48,6 +49,8 @@ class client:
 					for t in self.threads:
 						t.join()
 					#time.sleep(self.interval)
+					if self.interval>self.cpu_interval:
+						time.sleep(self.interval-self.cpu_interval)
 					t=send_data_thread(completed_values,self.channel,self.redis)
 					t.start()
 					t.join()

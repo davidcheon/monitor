@@ -11,7 +11,7 @@ class cpu:
 class memory:
 	def __init__(self):
 		self.server_name='memory_server'
-		self.params={'mem_free':{'min':0,'max':70}
+		self.params={'mem_free':{'min':50,'max':70}
 			     
 			}
 
