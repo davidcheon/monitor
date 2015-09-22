@@ -27,19 +27,23 @@ class mythread(threading.Thread):
 		try:
 			self.recv_data['received_time']=time.time()
 			threads=[]
-			t_cpu=cpu_handler.cpu_handler_thread(self.recv_data,self.counter)	
-			t_memory=memory_handler.memory_handler_thread(self.recv_data,self.counter)
-			t_hdm=hdm_handler.hdm_handler_thread(self.recv_data,self.counter)
-			threads.append(t_cpu)
-			threads.append(t_memory)
-			threads.append(t_hdm)
-			t_cpu.start()
-			t_memory.start()
-			t_hdm.start()
+			if self.recv_data.has_key('cpu'):
+				t_cpu=cpu_handler.cpu_handler_thread(self.recv_data,self.counter)
+				threads.append(t_cpu)
+				t_cpu.start()
+			elif self.recv_data.has_key('memory'):
+				t_memory=memory_handler.memory_handler_thread(self.recv_data,self.counter)
+				threads.append(t_memory)
+				t_memory.start()
+			elif self.recv_data.has_key('hdm'):
+				t_hdm=hdm_handler.hdm_handler_thread(self.recv_data,self.counter)
+				threads.append(t_hdm)
+				t_hdm.start()
 			for t in threads:
 				t.join()
- 			'''self.recv_data=
-{u'hdm': {u'/dev/shm': u'1%', u'/boot': u'18%', u'/media/\u6211\u7684\u5149\u76d8': u'100%', u'/': u'87%', u'/home': u'53%'}, 'received_time': 1442501366.021204, u'from': u'192.168.1.105', u'cpu': {u'idle': u'93.79', u'nice': u'0.00', u'system': u'2.18', u'user': u'3.27'}, u'memory': {u'mem_free': 23.0}}
+ 			'''recv_data=
+{'data': {'from': '192.168.1.105', u'cpu': {'system': '0.84', 'idle': '95.07', 'user': '2.01', 'nice': '0.00'}}}
+
 			'''
 
 		except TypeError,e:
@@ -69,11 +73,14 @@ if __name__=='__main__':
 			channel=random.choice(hs.channels)
 			send_data['channel']=channel
 			temp_servers={}
-			for server in h.servers.keys():
-				temp_servers[server]=server+'_info'
+			send_data['interval']={}
+			for k,v in h.servers.items():
+				temp_servers[k]=k+'_info'
+				send_data['interval'][k+'_interval']=v[k+'_interval']
 			send_data['servers']=temp_servers
-			send_data['interval']=h.interval
-			send_data['cpu_interval']=h.servers['cpu']['cpu_interval']
+			send_data['host_interval']=h.interval
+
+
 			r.set(h.ip,json.dumps(send_data))
 			counter[h.ip]={'cpu':{
 				'idle':[],			
@@ -100,17 +107,21 @@ if __name__=='__main__':
 			recv_data=ps.parse_response()[2]
 			recv_data=json.loads(recv_data)
 			from_ip=recv_data['data']['from']
-			if not host_hdm_status[from_ip]:
+			if not host_hdm_status[from_ip] and recv_data['data'].has_key('hdm'):
+				
 				for device in recv_data['data']['hdm'].keys():
 						counter[from_ip]['hdm'][device]=[]
 				
-			host_hdm_status[from_ip]=True
+				host_hdm_status[from_ip]=True
 			t=mythread(recv_data,counter)
 			t.start()
 
 
 
-
+'''
+recv_data=
+{'data': {'from': '192.168.1.105', u'cpu': {'system': '0.84', 'idle': '95.07', 'user': '2.01', 'nice': '0.00'}}}
+'''
 
 
 

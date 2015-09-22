@@ -18,11 +18,13 @@ class client:
 		if self.status:
 			val=self.redis.get(self.local_ip)
 			if  val:
+
 				self.val=json.loads(val)
+				self.interval=self.val['interval']
 				self.channel=self.val['channel']
-				self.interval=int(self.val['interval'])
+				#self.interval=int(self.val['interval'])
 				self.servers=self.val['servers']
-				self.cpu_interval=self.val['cpu_interval']
+				self.host_interval=self.val['host_interval']
 				self.can_start_plugins=True
 				self.start_plugins()
 			else:
@@ -34,11 +36,15 @@ class client:
 		if self.can_start_plugins:
 			while 1:
 				self.threads=[]
-				completed_values={'from':self.local_ip}
+				
 				try:
 					for servername,func in self.servers.items():
 						try:
-							t=my_exe_func_thread(servername,func,completed_values)
+							completed_values={'from':self.local_ip}
+							inter=self.interval[servername+'_interval']
+#							if servername=='cpu':
+#								inter=self.host_interval-self.interval['cpu_interval'] if self.host_interval-self.interval['cpu_interval']>0 else self.interval['cpu_interval']
+							t=my_exe_func_thread(servername,func,completed_values,inter,self.channel,self.redis)
 							self.threads.append(t)
 							t.start()
 						except Exception,e:
@@ -49,24 +55,34 @@ class client:
 					for t in self.threads:
 						t.join()
 					#time.sleep(self.interval)
-					if self.interval>self.cpu_interval:
-						time.sleep(self.interval-self.cpu_interval)
-					t=send_data_thread(completed_values,self.channel,self.redis)
-					t.start()
-					t.join()
+#					if self.interval>self.cpu_interval:
+#						time.sleep(self.interval-self.cpu_interval)
+#					t=send_data_thread(completed_values,self.channel,self.redis)
+#					t.start()
+					
+					
+#					t.join()
 		else:
 			print 'can not start plugins func'
 class my_exe_func_thread(threading.Thread):
-	def __init__(self,servername,func,completed_values):
+	def __init__(self,servername,func,completed_values,interval,channel,redis):
 		threading.Thread.__init__(self)
 		self.completed_values=completed_values
 		self.servername=servername
 		self.func=func
+		self.interval=interval
+		self.channel=channel
+		self.redis=redis
 	def run(self):
 		func_ref=getattr(eval(self.servername),self.func)
 		try:
 			data=func_ref()
 			self.completed_values[self.servername]=data
+			
+			time.sleep(self.interval)
+			
+			t=send_data_thread(self.completed_values,self.channel,self.redis)
+			t.start()
 		except MyException.MyException,e:
 			print '\033[31m Error:%s  \033[0m'%e.data
 class send_data_thread(threading.Thread):
@@ -76,6 +92,7 @@ class send_data_thread(threading.Thread):
 		self.channel=channel
 		self.redis=redis
 	def run(self):
+		print {'data':self.data}
 		self.redis.publish(self.channel,json.dumps({'data':self.data}))
 def exit_handler(signum,frame):
 	global red
